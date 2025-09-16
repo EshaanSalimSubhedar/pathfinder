@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "build": "vite build", // or "react-scripts build", "next build", etc.
+    "start": "npm run dev"
+  }
+}
