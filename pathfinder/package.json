@@ -2,7 +2,7 @@
   "name": "pathfinder-internship-platform",
   "version": "1.0.0",
   "description": "Full-stack internship matching platform with PM scheme integration",
-  "main": "index.js",
+  "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
@@ -16,11 +16,16 @@
     "db:migrate": "cd backend && npx prisma migrate dev",
     "db:studio": "cd backend && npx prisma studio"
   },
-  "keywords": ["internship", "matching", "pm-scheme", "ai", "recruitment"],
+  "keywords": [
+    "internship",
+    "matching",
+    "pm-scheme",
+    "ai",
+    "recruitment"
+  ],
   "author": "Pathfinder Team",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
   }
 }
-
