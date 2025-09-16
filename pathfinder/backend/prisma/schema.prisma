@@ -1,0 +1,451 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  EMPLOYER
+  ADMIN
+  GOVERNMENT_ADMIN
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  SELECTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum InternshipStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  CLOSED
+  EXPIRED
+}
+
+enum PMSchemeType {
+  PRIME_MINISTERS_INTERNSHIP_SCHEME
+  SKILL_INDIA_DIGITAL
+  NEP_2020_INTERNSHIP
+  STARTUP_INDIA_INTERNSHIP
+}
+
+enum NotificationType {
+  APPLICATION_SUBMITTED
+  APPLICATION_STATUS_CHANGED
+  NEW_INTERNSHIP_MATCH
+  INTERVIEW_SCHEDULED
+  REMINDER
+  SYSTEM_ANNOUNCEMENT
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  password          String
+  role              UserRole
+  firstName         String
+  lastName          String
+  phone             String?
+  isEmailVerified   Boolean   @default(false)
+  isPhoneVerified   Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  lastLoginAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Profile relationships
+  studentProfile    StudentProfile?
+  companyProfile    CompanyProfile?
+  adminProfile      AdminProfile?
+
+  // Application relationships
+  applications      Application[]
+  internships       Internship[]
+  notifications     Notification[]
+  sentMessages      Message[] @relation("SentMessages")
+  receivedMessages  Message[] @relation("ReceivedMessages")
+
+  // PM Scheme relationships
+  pmSchemeApplications PMSchemeApplication[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Personal Information
+  dateOfBirth           DateTime?
+  gender                String?
+  address               String?
+  city                  String?
+  state                 String?
+  pincode               String?
+  aadhaarNumber         String?   @unique
+  panNumber             String?
+  
+  // Academic Information
+  currentInstitution    String?
+  degree                String?
+  fieldOfStudy          String?
+  graduationYear        Int?
+  cgpa                  Float?
+  academicDocuments     String[]  // Array of file URLs
+  
+  // Professional Information
+  skills                String[]
+  experience            String?
+  projects              String[]
+  certifications        String[]
+  resumeUrl             String?
+  portfolioUrl          String?
+  
+  // Preferences
+  preferredLocations    String[]
+  preferredIndustries   String[]
+  preferredCompanySize  String?
+  minStipend            Float?
+  maxStipend            Float?
+  availableFrom         DateTime?
+  availableUntil        DateTime?
+  workMode              String? // Remote, On-site, Hybrid
+  
+  // PM Scheme Information
+  isPMSchemeEligible    Boolean   @default(false)
+  pmSchemeDocuments     String[]
+  
+  // Profile Completion
+  profileCompletion     Int       @default(0) // Percentage
+  isProfileComplete     Boolean   @default(false)
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("student_profiles")
+}
+
+model CompanyProfile {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Company Information
+  companyName           String
+  companyType           String? // Startup, MNC, SME, Government
+  industry              String?
+  companySize           String?
+  foundedYear           Int?
+  website               String?
+  description           String?
+  
+  // Contact Information
+  address               String?
+  city                  String?
+  state                 String?
+  pincode               String?
+  gstNumber             String?
+  panNumber             String?
+  
+  // Company Culture
+  cultureValues         String[]
+  workEnvironment       String?
+  benefits              String[]
+  
+  // Verification
+  isVerified            Boolean   @default(false)
+  verificationDocuments String[]
+  
+  // PM Scheme Information
+  isPMSchemeParticipant Boolean   @default(false)
+  pmSchemeCertificate   String?
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("company_profiles")
+}
+
+model AdminProfile {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  department            String?
+  designation           String?
+  permissions           String[]  // Array of permission strings
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("admin_profiles")
+}
+
+model Internship {
+  id                    String            @id @default(cuid())
+  companyId             String
+  company               User              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Basic Information
+  title                 String
+  description           String
+  requirements          String[]
+  responsibilities      String[]
+  skillsRequired        String[]
+  qualifications        String[]
+  
+  // Location and Duration
+  location              String
+  city                  String
+  state                 String
+  workMode              String // Remote, On-site, Hybrid
+  duration              Int // in weeks
+  startDate             DateTime?
+  endDate               DateTime?
+  
+  // Compensation
+  stipend               Float?
+  stipendType           String? // Fixed, Performance-based, Project-based
+  otherBenefits         String[]
+  
+  // Application Details
+  applicationDeadline   DateTime?
+  maxApplications       Int?
+  currentApplications   Int              @default(0)
+  
+  // Status and Visibility
+  status                InternshipStatus  @default(DRAFT)
+  isActive              Boolean           @default(true)
+  isPMSchemeEligible    Boolean           @default(false)
+  pmSchemeType          PMSchemeType?
+  
+  // PM Scheme Specific
+  pmSchemeBenefits      String[]
+  governmentFunding     Float?
+  
+  // Metadata
+  views                 Int               @default(0)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Relationships
+  applications          Application[]
+  matchingResults       MatchingResult[]
+
+  @@map("internships")
+}
+
+model Application {
+  id                    String            @id @default(cuid())
+  studentId             String
+  student               User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  internshipId          String
+  internship            Internship        @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  
+  // Application Details
+  status                ApplicationStatus @default(SUBMITTED)
+  coverLetter           String?
+  resumeUrl             String?
+  portfolioUrl          String?
+  additionalDocuments   String[]
+  
+  // AI Scoring
+  skillMatchScore       Float?
+  locationMatchScore    Float?
+  cultureFitScore       Float?
+  overallScore          Float?
+  aiRecommendation      String?
+  
+  // Timeline
+  appliedAt             DateTime          @default(now())
+  reviewedAt            DateTime?
+  statusChangedAt       DateTime?
+  interviewedAt         DateTime?
+  
+  // Feedback
+  feedback              String?
+  rating                Int? // 1-5 stars
+  
+  // PM Scheme
+  isPMSchemeApplication Boolean           @default(false)
+  pmSchemeApplicationId String?
+  pmSchemeApplication   PMSchemeApplication? @relation(fields: [pmSchemeApplicationId], references: [id])
+  
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@unique([studentId, internshipId])
+  @@map("applications")
+}
+
+model MatchingResult {
+  id                    String    @id @default(cuid())
+  studentId             String
+  student               User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  internshipId          String
+  internship            Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  
+  // Matching Scores
+  skillCompatibility    Float
+  locationCompatibility Float
+  cultureFit            Float
+  careerAlignment       Float
+  overallScore          Float
+  
+  // Recommendation Details
+  recommendationReason  String
+  strengths             String[]
+  improvementAreas      String[]
+  
+  // Status
+  isViewed              Boolean   @default(false)
+  isApplied             Boolean   @default(false)
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([studentId, internshipId])
+  @@map("matching_results")
+}
+
+model PMSchemeApplication {
+  id                    String    @id @default(cuid())
+  studentId             String
+  student               User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  // Scheme Information
+  schemeType            PMSchemeType
+  applicationNumber     String    @unique
+  status                String    @default("PENDING")
+  
+  // Eligibility
+  eligibilityScore      Float?
+  verificationStatus    String    @default("PENDING")
+  verifiedDocuments     String[]
+  
+  // Government Integration
+  governmentRefNumber   String?
+  approvalDate          DateTime?
+  disbursementDate      DateTime?
+  disbursementAmount    Float?
+  
+  // Applications under this scheme
+  applications          Application[]
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("pm_scheme_applications")
+}
+
+model Notification {
+  id                    String            @id @default(cuid())
+  userId                String
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type                  NotificationType
+  title                 String
+  message               String
+  data                  Json? // Additional data as JSON
+  
+  isRead                Boolean           @default(false)
+  readAt                DateTime?
+  
+  createdAt             DateTime          @default(now())
+
+  @@map("notifications")
+}
+
+model Message {
+  id                    String    @id @default(cuid())
+  senderId              String
+  sender                User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId            String
+  receiver              User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  content               String
+  messageType           String    @default("text") // text, image, file
+  
+  isRead                Boolean   @default(false)
+  readAt                DateTime?
+  
+  createdAt             DateTime  @default(now())
+
+  @@map("messages")
+}
+
+model Evaluation {
+  id                    String    @id @default(cuid())
+  applicationId         String
+  evaluatorId           String
+  
+  // Evaluation Criteria
+  technicalSkills       Int // 1-5
+  communicationSkills   Int // 1-5
+  problemSolving        Int // 1-5
+  culturalFit           Int // 1-5
+  overallRating         Int // 1-5
+  
+  // Feedback
+  strengths             String[]
+  improvementAreas      String[]
+  comments              String?
+  
+  // Recommendation
+  recommendation        String // HIRE, NO_HIRE, MAYBE
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("evaluations")
+}
+
+model Skill {
+  id                    String    @id @default(cuid())
+  name                  String    @unique
+  category              String
+  description           String?
+  isActive              Boolean   @default(true)
+  
+  // Usage Statistics
+  usageCount            Int       @default(0)
+  trendScore            Float     @default(0)
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("skills")
+}
+
+model Industry {
+  id                    String    @id @default(cuid())
+  name                  String    @unique
+  description           String?
+  isActive              Boolean   @default(true)
+  
+  // Statistics
+  internshipCount       Int       @default(0)
+  averageStipend        Float     @default(0)
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("industries")
+}
+
